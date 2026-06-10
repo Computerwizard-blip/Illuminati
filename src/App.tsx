@@ -709,9 +709,12 @@ export default function App() {
           <div className="inline-flex p-3 rounded-2xl bg-zinc-50 border-2 border-gold-500/25 text-gold-505 mb-5 shadow-md">
             <Eye className="w-9 h-9" />
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-black tracking-wide text-zinc-900 mb-4 drop-shadow-sm uppercase">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-black tracking-wide text-zinc-900 mb-2 drop-shadow-sm uppercase">
             ILLUMINATI ORGANIZATION
           </h1>
+          <h3 className="text-gold-600 tracking-[0.35em] font-mono text-sm md:text-base uppercase font-black mb-4">
+            NEW WORLD ORDER 666
+          </h3>
           <p className="text-zinc-700 max-w-2xl text-xs md:text-sm font-semibold tracking-wide leading-relaxed font-sans mt-2">
             <strong className="text-gold-700 font-extrabold">Sovereign Portal of the Illuminate Elites.</strong> Unlocking historical event ciphers, managing masonic highland grids, and guiding destined community members toward ultimate <strong className="text-gold-600 font-black bg-gold-500/10 px-1.5 py-0.5 rounded border border-gold-500/20 hover:border-gold-500/30 transition-colors">Fame, Power, and absolute Fortune.</strong>
           </p>

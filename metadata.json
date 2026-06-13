@@ -1,6 +1,6 @@
 {
   "name": "Illuminati Portal",
   "description": "An interactive Sovereign Illuminati portal featuring elite coordination archives, 666 Gematria decoders, local temple locators, and E2E encrypted message boards.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

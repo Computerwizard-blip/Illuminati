@@ -36,7 +36,12 @@ import {
   Sliders,
   Play,
   RotateCcw,
-  Workflow
+  Workflow,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Save,
+  Circle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -44,6 +49,9 @@ import { motion, AnimatePresence } from "motion/react";
 const hypercarMansionImg = "/src/assets/images/hypercar_mansion_1781097731101.png";
 const wealthBondsImg = "/src/assets/images/wealth_bonds_1781097747995.png";
 const eliteCityscapeImg = "/src/assets/images/elite_cityscape_1781097763159.png";
+const ritualAltarBgImg = "/src/assets/images/ritual_altar_bg_1781383031663.jpg";
+const demonic666GlowImg = "/src/assets/images/demonic_666_glow_1781383523605.jpg";
+const illuminati66LawsCoverImg = "/src/assets/images/illuminati_66_laws_cover_1781383955284.jpg";
 
 // Real-world masonic lodge / templar addresses mapped to Kenya's primary regional clusters
 interface TempleInfo {
@@ -417,6 +425,7 @@ export default function App() {
   // Gematria Calculator Input
   const [gematriaInput, setGematriaInput] = useState<string>("Novus Ordo");
   const [gematriaResult, setGematriaResult] = useState<number>(0);
+  const [activeLawIndex, setActiveLawIndex] = useState<number | null>(null);
 
   // Timeline selections & AI analysis outputs
   const [selectedEvent, setSelectedEvent] = useState<string>("");
@@ -437,6 +446,313 @@ export default function App() {
   const [googleVerified, setGoogleVerified] = useState<boolean>(true);
   const [googleEmail, setGoogleEmail] = useState<string>("francypendy@gmail.com");
   const [googleName, setGoogleName] = useState<string>("Francy Pendy");
+  
+  // Live camera selfie state & ID document uploads
+  const [selfieImg, setSelfieImg] = useState<string | null>(null);
+  const [idFrontImg, setIdFrontImg] = useState<string | null>(null);
+  const [idBackImg, setIdBackImg] = useState<string | null>(null);
+  const [activeCamRole, setActiveCamRole] = useState<"selfie" | "front" | "back" | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<"user" | "environment">("user");
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  
+  // Real-time camera timer and quality mapping states
+  const [camTimer, setCamTimer] = useState<number>(60);
+  const [scanConfidence, setScanConfidence] = useState<number>(0);
+  const [scanMetrics, setScanMetrics] = useState<{
+    clarity: number;
+    lighting: "BALANCED" | "TOO DARK" | "TOO BRIGHT";
+    alignment: string;
+    isSteady: boolean;
+  }>({
+    clarity: 85,
+    lighting: "BALANCED",
+    alignment: "INITIALIZING SENSORS...",
+    isSteady: true
+  });
+  
+  // Custom persist save state status
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Manage camera streaming based on individual capture role
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    if (activeCamRole) {
+      // Selfie mode supports switching between user (selfie style) and environment (back side / rear)
+      const constraints = {
+        video: {
+          facingMode: activeCamRole === "selfie" ? cameraFacingMode : { ideal: "environment" }
+        }
+      };
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then((stream) => {
+          activeStream = stream;
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(err => console.log("Stream play error:", err));
+          }
+          setCameraError(null);
+        })
+        .catch((err) => {
+          console.error("Camera access failed:", err);
+          setCameraError(`Dynamic camera capture error for ${activeCamRole}: Camera access denied or currently occupied by another node ledger.`);
+          setActiveCamRole(null);
+        });
+    } else {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [activeCamRole, cameraFacingMode]);
+
+  const stopCameraStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setActiveCamRole(null);
+  };
+
+  // Snaps biometric photo specifically fitting the standard box dimensions
+  const handleSnapSelfie = () => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      
+      const vWidth = video.videoWidth || 640;
+      const vHeight = video.videoHeight || 360;
+      
+      canvas.width = vWidth;
+      canvas.height = vHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // Draw flipped mirror horizontal view ONLY if using front/user/selfie camera facing mode
+        if (cameraFacingMode === "user") {
+          ctx.translate(vWidth, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(video, 0, 0, vWidth, vHeight);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Restore transforms
+
+        // High-level masonic watermark
+        ctx.fillStyle = "rgba(255, 215, 0, 0.95)";
+        ctx.font = "bold 14px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("BIOMETRIC FACE MAPPING: SECURED", vWidth / 2, vHeight - 40);
+        ctx.fillText("DEC: 666 SOVEREIGN COUNCIL ACTIVE", vWidth / 2, vHeight - 20);
+
+        const dataUrl = canvas.toDataURL("image/png");
+        setSelfieImg(dataUrl);
+        stopCameraStream();
+      }
+    }
+  };
+
+  // Snaps live card scans (Front or Back) beautifully formatted into standard ID aspect ratios
+  const handleSnapIDCard = (role: "front" | "back") => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      // Standard ID proportion of 1.586
+      canvas.width = 640;
+      canvas.height = 404;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        const vWidth = video.videoWidth || 640;
+        const vHeight = video.videoHeight || 404;
+        
+        // Calculate center crop area for standard ID aspect ratio
+        const targetHeight = vWidth / 1.586;
+        let sx = 0;
+        let sy = (vHeight - targetHeight) / 2;
+        let sWidth = vWidth;
+        let sHeight = targetHeight;
+
+        if (targetHeight > vHeight) {
+          sHeight = vHeight;
+          sWidth = sHeight * 1.586;
+          sx = (vWidth - sWidth) / 2;
+          sy = 0;
+        }
+
+        // Draw camera frame without mirroring to preserve text readability
+        ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 640, 404);
+
+        // Thick golden high-integrity framing
+        ctx.strokeStyle = "#bca03f";
+        ctx.lineWidth = 12;
+        ctx.strokeRect(0, 0, 640, 404);
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, 10, 620, 384);
+
+        // Add security stamp details
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.font = "bold 11px monospace";
+        ctx.fillText(`666 DIGITAL ARCHIVE ID SYSTEM: ${role.toUpperCase()}`, 25, 30);
+        ctx.fillText("HIGH-CONTRAST SECURE CARRIER STREAM ACTIVE", 25, 45);
+
+        const dataUrl = canvas.toDataURL("image/png");
+        if (role === "front") setIdFrontImg(dataUrl);
+        if (role === "back") setIdBackImg(dataUrl);
+        stopCameraStream();
+      }
+    }
+  };
+
+  // Store active camera role in a ref to let asynchronous timer actions always see the latest state
+  const activeCamRef = useRef<"selfie" | "front" | "back" | null>(null);
+  useEffect(() => {
+    activeCamRef.current = activeCamRole;
+  }, [activeCamRole]);
+
+  // Real-time Frame Scan Video Analyzer & Auto-lock Timer (60s limit with manual snap)
+  useEffect(() => {
+    if (!activeCamRole) {
+      setCamTimer(60);
+      setScanConfidence(0);
+      return;
+    }
+
+    // Capture ticking every second - timeout stops the camera stream (locking it)
+    const timerInterval = setInterval(() => {
+      setCamTimer((prev) => {
+        if (prev <= 1) {
+          stopCameraStream();
+          setCameraError("Camera session timed out after 60 seconds.");
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Frame Analyzer running at 5 FPS to calculate actual lighting and scan clarity!
+    const analyzerInterval = setInterval(() => {
+      if (videoRef.current && videoRef.current.readyState === 4) {
+        const video = videoRef.current;
+        const width = video.videoWidth || 320;
+        const height = video.videoHeight || 240;
+
+        try {
+          // Process current frame
+          const canvas = document.createElement("canvas");
+          canvas.width = 80; // small dimensions represent highly optimized pixel retrieval routines
+          canvas.height = 60;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, 80, 60);
+            const imgData = ctx.getImageData(0, 0, 80, 60);
+            const data = imgData.data;
+
+            let totalBrightness = 0;
+            // Calculate average perceived luminance: Y = 0.299R + 0.587G + 0.114B
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              totalBrightness += (0.299 * r + 0.587 * g + 0.114 * b);
+            }
+            const avgBrightness = totalBrightness / (80 * 60);
+
+            // Determine if balanced
+            let currentLighting: "BALANCED" | "TOO DARK" | "TOO BRIGHT" = "BALANCED";
+            if (avgBrightness < 35) {
+              currentLighting = "TOO DARK";
+            } else if (avgBrightness > 225) {
+              currentLighting = "TOO BRIGHT";
+            }
+
+            // Real clarity computed from pixel intensity standard deviation
+            let rawVariance = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const lum = (0.299 * r + 0.587 * g + 0.114 * b);
+              rawVariance += Math.abs(lum - avgBrightness);
+            }
+            const stdDev = rawVariance / (80 * 60);
+            // Translate variance to solid clarity % index
+            const calculatedClarity = Math.min(100, Math.max(50, Math.floor(55 + stdDev * 0.85)));
+
+            // Check alignment rules based on stream role
+            let isAligned = false;
+            let alignStatusMsg = "";
+
+            const currentRole = activeCamRef.current;
+            if (currentRole === "selfie") {
+              // Selfie face needs centered contrast clusters inside standard deviation bounds and balanced light
+              isAligned = stdDev > 22 && avgBrightness > 45 && avgBrightness < 215;
+              alignStatusMsg = isAligned 
+                ? "BIO-MAPPED FACE DETECTED & ALIGNED" 
+                : "CENTERING FACE IN THE SCANNER LAYOUT...";
+            } else if (currentRole === "front" || currentRole === "back") {
+              // ID scans need clear uniform layout edges
+              isAligned = stdDev > 18 && avgBrightness > 40 && avgBrightness < 220;
+              alignStatusMsg = isAligned 
+                ? `${currentRole.toUpperCase()} DOCUMENT PROPORTIONS RESOLVED & READABLE` 
+                : `ALIGN ${currentRole.toUpperCase()} DOCUMENT WITH HORIZONTAL ID LINE...`;
+            }
+
+            setScanMetrics({
+              clarity: calculatedClarity,
+              lighting: currentLighting,
+              alignment: alignStatusMsg,
+              isSteady: true
+            });
+
+            // Increase compliance confidence if parameters are all valid (balanced light and correct alignment)
+            if (currentLighting === "BALANCED" && isAligned) {
+              setScanConfidence((conf) => {
+                const nextConf = conf + 12; // Reaches 100% in ~3.3 seconds of clear, well-aligned scan!
+                if (nextConf >= 100) {
+                  return 100; // Manual capture requested by the user instead of auto-capture
+                }
+                return nextConf;
+              });
+            } else {
+              // Degenerate confidence slowly if alignment fails
+              setScanConfidence((conf) => Math.max(0, conf - 12));
+            }
+          }
+        } catch (e) {
+          console.warn("Frame analyze lookup in sandbox:", e);
+        }
+      }
+    }, 400);
+
+    return () => {
+      clearInterval(timerInterval);
+      clearInterval(analyzerInterval);
+    };
+  }, [activeCamRole]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: "selfie" | "front" | "back") => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          if (target === "selfie") setSelfieImg(reader.result);
+          if (target === "front") setIdFrontImg(reader.result);
+          if (target === "back") setIdBackImg(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const [regData, setRegData] = useState({
     fullName: "Francy Pendy",
     country: "Kenya",
@@ -522,6 +838,82 @@ export default function App() {
   useEffect(() => {
     setGematriaResult(calculateMasonicGematria(gematriaInput));
   }, [gematriaInput]);
+
+  // Save status indicator
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+
+  // Load registration state from persistent localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedReg = localStorage.getItem("illuminati_reg_data");
+      const savedToken = localStorage.getItem("illuminati_blockchain_token");
+      const savedSelfie = localStorage.getItem("illuminati_selfie_img");
+      const savedFront = localStorage.getItem("illuminati_id_front_img");
+      const savedBack = localStorage.getItem("illuminati_id_back_img");
+      const savedRegStep = localStorage.getItem("illuminati_reg_step");
+
+      if (savedReg) {
+        setRegData(JSON.parse(savedReg));
+      }
+      if (savedToken) setBlockchainToken(savedToken);
+      if (savedSelfie) setSelfieImg(savedSelfie);
+      if (savedFront) setIdFrontImg(savedFront);
+      if (savedBack) setIdBackImg(savedBack);
+      if (savedRegStep) {
+        const stepNum = parseInt(savedRegStep, 10);
+        if (!isNaN(stepNum)) setRegStep(stepNum);
+      }
+      
+      if (savedReg || savedToken || savedSelfie) {
+        setSaveToast("CREDENTIALS AUTOMATICALLY RESTORED FROM SECURE LOCAL STORAGE NODE");
+        setTimeout(() => setSaveToast(null), 4000);
+      }
+    } catch (e) {
+      console.error("Local storage restoration error:", e);
+    }
+  }, []);
+
+  // Main save command that serializes all states securely
+  const handleSaveAllDetails = () => {
+    try {
+      localStorage.setItem("illuminati_reg_data", JSON.stringify(regData));
+      localStorage.setItem("illuminati_blockchain_token", blockchainToken);
+      if (selfieImg) localStorage.setItem("illuminati_selfie_img", selfieImg);
+      if (idFrontImg) localStorage.setItem("illuminati_id_front_img", idFrontImg);
+      if (idBackImg) localStorage.setItem("illuminati_id_back_img", idBackImg);
+      localStorage.setItem("illuminati_reg_step", String(regStep));
+      
+      setSaveToast("ALL IDENTITY ARCHIVES AND METRICS SECURED SAFELY");
+      setTimeout(() => setSaveToast(null), 4000);
+    } catch (e) {
+      console.error("Local storage saving error:", e);
+    }
+  };
+
+  // Synchronize changes automatically
+  useEffect(() => {
+    localStorage.setItem("illuminati_reg_data", JSON.stringify(regData));
+  }, [regData]);
+
+  useEffect(() => {
+    if (blockchainToken) localStorage.setItem("illuminati_blockchain_token", blockchainToken);
+  }, [blockchainToken]);
+
+  useEffect(() => {
+    if (selfieImg) localStorage.setItem("illuminati_selfie_img", selfieImg);
+  }, [selfieImg]);
+
+  useEffect(() => {
+    if (idFrontImg) localStorage.setItem("illuminati_id_front_img", idFrontImg);
+  }, [idFrontImg]);
+
+  useEffect(() => {
+    if (idBackImg) localStorage.setItem("illuminati_id_back_img", idBackImg);
+  }, [idBackImg]);
+
+  useEffect(() => {
+    localStorage.setItem("illuminati_reg_step", String(regStep));
+  }, [regStep]);
 
   const fetchMessages = async () => {
     try {
@@ -628,6 +1020,18 @@ export default function App() {
       alert("Tokens required: Please generate your sovereign blockchain entry vector first.");
       return;
     }
+    if (!selfieImg) {
+      alert("Face biometric required: Please capture a live selfie clearly showing your full face first.");
+      return;
+    }
+    if (!idFrontImg) {
+      alert("ID scan required: Please upload or capture the Front side of your National ID photo first.");
+      return;
+    }
+    if (!idBackImg) {
+      alert("ID scan required: Please upload or capture the Back side of your National ID photo first.");
+      return;
+    }
     setRegStep(2); // Progresses into displaying county masonic temple/hall
   };
 
@@ -676,47 +1080,57 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white radial-mesh-grid text-zinc-800 font-sans selection:bg-gold-500/35 selection:text-zinc-900">
       
+      {saveToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] bg-[#0b0e14]/95 border-2 border-gold-500 text-gold-400 font-mono text-xs font-black tracking-widest px-6 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 animate-fadeIn">
+          <ShieldCheck className="w-5 h-5 text-emerald-500 animate-pulse" />
+          <span>{saveToast}</span>
+        </div>
+      )}
+      
       {/* Dynamic Sub-header system status ticker */}
-      <div className="bg-zinc-50 border-b border-gold-500/20 text-[10px] md:text-xs py-2.5 px-6 flex flex-wrap justify-between items-center text-gold-600 font-mono tracking-wider uppercase">
+      <div className="bg-zinc-950 border-b border-red-500/20 text-[10px] md:text-xs py-2.5 px-6 flex flex-wrap justify-between items-center text-red-500 font-mono tracking-wider uppercase">
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-405 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-600"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
           </span>
-          <span className="text-zinc-655 text-[11px] font-mono tracking-wide font-black">{systemAlert}</span>
+          <span className="text-red-400 text-[11px] font-mono tracking-wide font-black animate-pulse">{systemAlert}</span>
         </div>
         <div className="flex items-center gap-6 text-[11px]">
-          <span className="text-zinc-600">COVENANT ENROLLMENT: <strong className="text-gold-600 font-black">{liveSovereigns.toLocaleString()}</strong></span>
+          <span className="text-zinc-400">COVENANT ENROLLMENT: <strong className="text-red-500 font-black">{liveSovereigns.toLocaleString()}</strong></span>
           <span className="hidden md:inline text-zinc-500 font-bold">MATRIX WEIGHT: 666.99.13</span>
         </div>
       </div>
 
-      {/* Main Brand Hero header */}
-      <header className="relative border-b border-gold-500/10 bg-gradient-to-b from-zinc-50 to-white text-center py-14 px-4 overflow-hidden shadow-inner">
+      {/* Main Brand Hero header with custom ritual background */}
+      <header 
+        style={{ backgroundImage: `url(${ritualAltarBgImg})` }}
+        className="relative border-b border-red-500/20 bg-cover bg-center text-center py-16 px-4 overflow-hidden shadow-2xl before:absolute before:inset-0 before:bg-black/80 before:z-0"
+      >
         {/* Subtle background vector circle */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none">
-          <div className="w-[500px] h-[500px] rounded-full border border-gold-400 flex items-center justify-center p-12">
-            <div className="w-full h-full rounded-full border border-dashed border-gold-500 flex items-center justify-center">
-              <div className="w-32 h-32 border border-gold-500 transform rotate-45"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.12] pointer-events-none z-10">
+          <div className="w-[500px] h-[500px] rounded-full border border-red-500 flex items-center justify-center p-12">
+            <div className="w-full h-full rounded-full border border-dashed border-red-500 flex items-center justify-center">
+              <div className="w-32 h-32 border border-red-500 transform rotate-45"></div>
             </div>
           </div>
         </div>
 
         <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center">
-          <span className="text-gold-700 tracking-[0.5em] font-mono text-[10px] uppercase mb-3 bg-gold-500/10 px-3 py-1 rounded border border-gold-500/20 font-black mb-4">
+          <span className="text-red-400 tracking-[0.5em] font-mono text-[10px] uppercase mb-3 bg-red-950/40 px-3 py-1 rounded border border-red-500/30 font-black mb-4">
             Novus Ordo Seclorum
           </span>
-          <div className="inline-flex p-3 rounded-2xl bg-zinc-50 border-2 border-gold-500/25 text-gold-505 mb-5 shadow-md">
+          <div className="inline-flex p-3 rounded-2xl bg-zinc-950/90 border-2 border-red-500/40 text-red-500 mb-5 shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-pulse">
             <Eye className="w-9 h-9" />
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-black tracking-wide text-zinc-900 mb-2 drop-shadow-sm uppercase">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-black tracking-wide text-white mb-2 drop-shadow-[0_2px_15px_rgba(239,68,68,0.7)] uppercase">
             ILLUMINATI ORGANIZATION
           </h1>
-          <h3 className="text-gold-600 tracking-[0.35em] font-mono text-sm md:text-base uppercase font-black mb-4">
+          <h3 className="text-gold-400 tracking-[0.35em] font-mono text-sm md:text-base uppercase font-black mb-4 drop-shadow-[0_0_5px_rgba(188,160,63,0.3)]">
             NEW WORLD ORDER 666
           </h3>
-          <p className="text-zinc-700 max-w-2xl text-xs md:text-sm font-semibold tracking-wide leading-relaxed font-sans mt-2">
-            <strong className="text-gold-700 font-extrabold">Sovereign Portal of the Illuminate Elites.</strong> Unlocking historical event ciphers, managing masonic highland grids, and guiding destined community members toward ultimate <strong className="text-gold-600 font-black bg-gold-500/10 px-1.5 py-0.5 rounded border border-gold-500/20 hover:border-gold-500/30 transition-colors">Fame, Power, and absolute Fortune.</strong>
+          <p className="text-zinc-200 max-w-2xl text-xs md:text-sm font-semibold tracking-wide leading-relaxed font-sans mt-2 drop-shadow-[0_1px_5px_rgba(0,0,0,0.8)]">
+            <strong className="text-red-400 font-extrabold">Sovereign Portal of the Illuminate Elites.</strong> Unlocking historical event ciphers, managing masonic highland grids, and guiding destined community members toward ultimate <strong className="text-gold-400 font-black bg-gold-500/10 px-1.5 py-0.5 rounded border border-gold-500/20 hover:border-gold-500/30 transition-colors">Fame, Power, and absolute Fortune.</strong>
           </p>
 
           {/* Join Now button requested right after description! */}
@@ -739,69 +1153,69 @@ export default function App() {
           </button>
 
           {/* Navigation Control Center */}
-          <div className="flex flex-wrap justify-center gap-1.5 mt-10 bg-zinc-900 p-1.5 rounded-xl border border-gold-500/20 max-w-4xl w-full shadow-xl">
+          <div className="flex flex-wrap justify-center gap-1.5 mt-10 bg-white p-1.5 rounded-xl border border-red-500/30 max-w-4xl w-full shadow-[0_10px_35px_-5px_rgba(0,0,0,0.3),0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-black/5 animate-fadeIn">
             <button 
               id="tab-archives"
               onClick={() => setActiveTab("archives")}
-              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-350 flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "archives" 
-                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/30 ring-2 ring-gold-400/50" 
-                  : "text-zinc-350 hover:text-gold-400 hover:bg-[#111622]/60 font-bold"
+                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/25 ring-2 ring-gold-400/50 scale-[1.02]" 
+                  : "text-zinc-700 hover:text-red-650 hover:bg-zinc-100 font-extrabold"
               }`}
             >
-              <Globe className="w-3.5 h-3.5 text-gold-500" />
+              <Globe className={`w-3.5 h-3.5 ${activeTab === "archives" ? "text-black" : "text-zinc-450 opacity-90"}`} />
               <span className="font-extrabold">Sovereign Archives</span>
             </button>
 
             <button 
               id="tab-intelligence"
               onClick={() => setActiveTab("intelligence")}
-              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-350 flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "intelligence" 
-                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/30 ring-2 ring-gold-400/50" 
-                  : "text-zinc-350 hover:text-gold-400 hover:bg-[#111622]/60 font-bold"
+                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/25 ring-2 ring-gold-400/50 scale-[1.02]" 
+                  : "text-zinc-700 hover:text-red-650 hover:bg-zinc-100 font-extrabold"
               }`}
             >
-              <Compass className="w-3.5 h-3.5 text-gold-500" />
+              <Compass className={`w-3.5 h-3.5 ${activeTab === "intelligence" ? "text-black" : "text-zinc-450 opacity-90"}`} />
               <span className="font-extrabold">666 Event Decoder</span>
             </button>
 
             <button 
               id="tab-terminal"
               onClick={() => setActiveTab("terminal")}
-              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-350 flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "terminal" 
-                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/30 ring-2 ring-gold-400/50" 
-                  : "text-zinc-350 hover:text-gold-400 hover:bg-[#111622]/60 font-bold"
+                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/25 ring-2 ring-gold-400/50 scale-[1.02]" 
+                  : "text-zinc-700 hover:text-red-650 hover:bg-zinc-100 font-extrabold"
               }`}
             >
-              <Shield className="w-3.5 h-3.5 text-gold-500" />
+              <Shield className={`w-3.5 h-3.5 ${activeTab === "terminal" ? "text-black" : "text-zinc-450 opacity-90"}`} />
               <span className="font-extrabold">E2E Safehouse Board</span>
             </button>
 
             <button 
               id="tab-portal"
               onClick={() => setActiveTab("portal")}
-              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-350 flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "portal" 
-                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/30 ring-2 ring-gold-400/50" 
-                  : "text-zinc-350 hover:text-gold-400 hover:bg-[#111622]/60 font-bold"
+                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/25 ring-2 ring-gold-400/50 scale-[1.02]" 
+                  : "text-zinc-700 hover:text-red-650 hover:bg-zinc-100 font-extrabold"
               }`}
             >
-              <Users className="w-3.5 h-3.5 text-gold-500" />
+              <Users className={`w-3.5 h-3.5 ${activeTab === "portal" ? "text-black" : "text-zinc-450 opacity-90"}`} />
               <span className="font-extrabold">Initiate Sanctuary</span>
             </button>
 
             <button 
               id="tab-manifest"
               onClick={() => setActiveTab("manifest")}
-              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-[130px] px-3 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-all duration-350 flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "manifest" 
-                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/30 ring-2 ring-gold-400/50" 
-                  : "text-zinc-350 hover:text-gold-400 hover:bg-[#111622]/60 font-bold"
+                  ? "bg-gold-500 text-black font-extrabold shadow-md shadow-gold-500/25 ring-2 ring-gold-400/50 scale-[1.02]" 
+                  : "text-zinc-700 hover:text-red-650 hover:bg-zinc-100 font-extrabold"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-gold-500" />
+              <Sparkles className={`w-3.5 h-3.5 ${activeTab === "manifest" ? "text-black" : "text-zinc-450 opacity-90"}`} />
               <span className="font-extrabold">Manifest Matrix</span>
             </button>
           </div>
@@ -1048,109 +1462,242 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: Gematria & 666 Event Decoder */}
+        {/* TAB 2: The Sixty-Six Laws of the Illuminati */}
         {activeTab === "intelligence" && (
           <div className="space-y-10 animate-fadeIn">
             <div className="text-center max-w-2xl mx-auto">
-              <h2 className="text-3xl font-serif text-gold-400 tracking-wide uppercase font-extrabold">666 EVENT & NAME DECODER</h2>
-              <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-gold-500 to-transparent mx-auto my-3"></div>
+              <h2 className="text-3xl font-serif text-red-500 tracking-wide uppercase font-extrabold drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">66 LAWS & COVENANT SYSTEM</h2>
+              <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto my-3"></div>
               <p className="text-zinc-200 text-xs md:text-sm font-bold leading-relaxed">
-                Unlock the hidden frequency of strings, names, and historic dates. The standard <strong className="text-gold-400">Masonic cipher</strong> translates letters as multiples of 6 (A=6, B=12, C=18, etc.) to evaluate alignment with sovereign power structures.
+                Unlock the ultimate blueprints of influence. Explore <strong className="text-gold-400">The Sixty-Six Laws of the Illuminati</strong>, the ancient codified paths of success, wisdom, and absolute sovereign fortune.
               </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               
-              {/* Calculator Box */}
-              <div className="lg:col-span-12 xl:col-span-5 bg-[#0b0e14]/95 border-2 border-gold-500/20 p-6 md:p-8 rounded-xl flex flex-col justify-between shadow-xl">
-                <div>
-                  <h3 className="text-lg font-serif text-gold-400 mb-4 flex items-center gap-2 font-extrabold">
-                    <Compass className="w-5 h-5 text-gold-500" />
-                    Masonic Code Decryption Alpha
-                  </h3>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-mono text-zinc-300 uppercase mb-2 font-extrabold">Evaluate Entity or Date Word:</label>
-                      <input 
-                        type="text" 
-                        value={gematriaInput}
-                        onChange={(e) => setGematriaInput(e.target.value)}
-                        placeholder="Type standard target here..."
-                        className="w-full bg-black border-2 border-gold-500/40 rounded-lg px-4 py-3 text-base text-gold-300 focus:outline-none focus:border-gold-500 font-mono font-bold"
+              {/* Illuminati 66 Laws Premium Book Cover / Interactive Reader */}
+              <div className="lg:col-span-12 xl:col-span-5 bg-black border-2 border-red-500/30 p-6 md:p-8 rounded-xl flex flex-col justify-between shadow-[0_0_30px_rgba(239,68,68,0.15)] animate-fadeIn relative overflow-hidden">
+                
+                {activeLawIndex === null ? (
+                  // BOOK COVER MODE (Matching the requested photos perfectly)
+                  <div className="flex flex-col items-center justify-between h-full min-h-[500px] border-2 border-gold-500/40 p-6 rounded-lg bg-zinc-950 shadow-inner relative group">
+                    
+                    {/* Double gold border overlay inside cover */}
+                    <div className="absolute inset-2 border border-gold-500/20 rounded pointer-events-none"></div>
+                    
+                    {/* Background Book Cover Image with cinematic overlay */}
+                    <div className="absolute inset-3 rounded overflow-hidden opacity-30 group-hover:opacity-40 transition-all duration-700">
+                      <img 
+                        src={illuminati66LawsCoverImg} 
+                        alt="The Sixty-Six Laws book cover" 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover object-center scale-[1.01] group-hover:scale-105 transition-transform duration-700"
                       />
                     </div>
 
-                    {/* Numerical Outcome Display */}
-                    <div className="bg-black rounded-lg border-2 border-gold-500/30 p-6 text-center space-y-2 shadow-inner">
-                      <span className="text-[10px] font-mono text-gold-400 uppercase tracking-widest block font-extrabold">Calculated Sovereign Weight</span>
-                      <div className="text-5xl md:text-6xl font-mono font-black text-gold-400 tracking-tight drop-shadow-[0_2px_8px_rgba(212,175,55,0.4)]">
-                        {gematriaResult}
+                    <div className="text-center space-y-1 relative z-10 w-full pt-4">
+                      <span className="text-gold-500 font-serif text-sm tracking-[0.4em] uppercase block font-black animate-pulse">THE</span>
+                      <h3 className="text-3xl md:text-4xl font-serif text-gold-450 tracking-wider font-black uppercase drop-shadow-[0_2px_8px_rgba(212,175,55,0.4)] pt-1">
+                        SIXTY-SIX LAWS
+                      </h3>
+                      <p className="text-gold-500/80 font-serif text-xs italic tracking-widest pt-1">
+                        of the Illuminati
+                      </p>
+                    </div>
+
+                    {/* Grand Pyramid and All-Seeing Eye Icon Area */}
+                    <div className="relative z-10 my-6 flex flex-col items-center justify-center">
+                      <div className="w-36 h-36 rounded-full border-2 border-dashed border-gold-500/30 flex items-center justify-center p-3 animate-spin-slow">
+                        <div className="w-full h-full rounded-full border border-gold-500/20 flex items-center justify-center transform rotate-45"></div>
                       </div>
-                      <span className="text-[11px] font-mono text-gold-500 uppercase tracking-widest block pt-2 font-extrabold bg-gold-500/10 py-1 px-2 rounded border border-gold-500/20">
-                        {gematriaResult % 666 === 0 ? "⚠️ ABSOLUTE APEX RESONANCE (MULTIPLY 666)" : gematriaResult > 666 ? "HIGH-FREQUENCY CORRIDOR" : "PRE-INITIATION OCTAVE"}
-                      </span>
+                      
+                      {/* Floating glowing golden eye of providence */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-gold-500/40 shadow-[0_0_20px_rgba(212,175,55,0.3)] animate-pulse">
+                          <Eye className="w-12 h-12 text-gold-450" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-center space-y-1.5 relative z-10 w-full pb-3">
+                      <h4 className="text-gold-450 tracking-[0.2em] font-serif text-xs font-bold uppercase">
+                        THE SECRETS OF SUCCESS
+                      </h4>
+                      <p className="text-[9px] font-mono text-zinc-500 tracking-widest uppercase font-extrabold block">
+                        published in the year 2013
+                      </p>
+                      
+                      <div className="pt-6">
+                        <button 
+                          type="button"
+                          onClick={() => setActiveLawIndex(0)}
+                          className="px-6 py-3 bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-600 hover:to-amber-700 active:scale-95 text-black font-mono text-[11px] font-black rounded-lg uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(212,175,55,0.45)] hover:shadow-[0_0_25px_rgba(212,175,55,0.6)] cursor-pointer"
+                        >
+                          👁️ OPEN COVENANT ARCHIVES
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  // ACTIVE LAWS FLIP READER MODE
+                  <div className="flex flex-col justify-between h-full min-h-[500px] border-2 border-red-500/30 p-6 md:p-8 rounded-lg bg-zinc-950 shadow-inner relative">
+                    <div className="absolute inset-2 border border-red-500/10 rounded pointer-events-none"></div>
 
-                {/* Mathematical rules details */}
-                <div className="border-t border-zinc-800/80 pt-6 mt-6 space-y-3">
-                  <h4 className="text-xs font-mono text-gold-400 uppercase font-extrabold">Masonic Numerical Key System:</h4>
-                  <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-zinc-300 font-bold bg-[#07090e] p-3 rounded border border-zinc-805">
-                    <div>A = 6</div>
-                    <div>B = 12</div>
-                    <div>C = 18</div>
-                    <div>D = 24</div>
-                    <div>E = 30</div>
-                    <div>F = 36</div>
-                    <div>M = 78</div>
-                    <div>S = 114</div>
-                    <div>Z = 156</div>
+                    {/* Active Law Presentation Header */}
+                    <div>
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-3 mb-5">
+                        <span className="text-[10px] font-mono text-gold-500 font-extrabold tracking-widest uppercase">
+                          ILLUMINATI SECRET MANUAL
+                        </span>
+                        <button 
+                          type="button"
+                          onClick={() => setActiveLawIndex(null)}
+                          className="px-2 py-1 bg-zinc-900 hover:bg-black border border-gold-500/20 text-gold-400 font-mono text-[9px] rounded font-black tracking-wider uppercase cursor-pointer"
+                        >
+                          📕 CLOSE BOOK
+                        </button>
+                      </div>
+
+                      {/* Animated Law details area */}
+                      <div className="space-y-6">
+                        <div className="flex items-base gap-3">
+                          <span className="px-3 py-1.5 bg-red-950/60 border border-red-500/40 text-red-400 font-mono text-xs md:text-sm rounded font-black tracking-wider">
+                            LAW {[1, 6, 11, 22, 33, 44, 55, 66][activeLawIndex]}
+                          </span>
+                          <h4 className="text-lg font-serif text-white uppercase font-black tracking-wide pt-1">
+                            {
+                              [
+                                "The Law of Accumulation",
+                                "The Law of Reputation",
+                                "The Law of Silence",
+                                "The Law of Association",
+                                "The Law of the Apex",
+                                "The Law of Multiplicity",
+                                "The Law of Transmutation",
+                                "The Law of Sovereign Covenant"
+                              ][activeLawIndex]
+                            }
+                          </h4>
+                        </div>
+
+                        {/* Quote Box with custom blockquotes styling */}
+                        <div className="bg-zinc-900/80 border-l-4 border-gold-500 p-4 rounded-r-lg shadow-sm">
+                          <p className="text-zinc-200 text-xs md:text-sm italic font-medium leading-relaxed font-sans">
+                            "
+                            {
+                              [
+                                "Great achievements are built out of thousands of small, unseen, and highly disciplined daily actions.",
+                                "Guard your reputation with your life; it is the currency of influence before they see your face.",
+                                "Speak only when your words are more powerful than silence. Reveal the objective, never the mechanism.",
+                                "Align exclusively with minds of gold and platinum. Energy is conductive; poverty of ambition is highly contagious.",
+                                "Position yourself above the field, where you can observe all angles. Sovereignty belongs to the detached observer.",
+                                "A single stream of fortune is a vulnerability. Elites construct multi-layered coordinates of wealth.",
+                                "Turn every obstacle, resistance, and adversary into fuel for your ascension. Lead is gold waiting for fire.",
+                                "Our destiny is anchored into the eternal geometry of human progress. Novus Ordo Seclorum."
+                              ][activeLawIndex]
+                            }
+                            "
+                          </p>
+                        </div>
+
+                        {/* Commentary / Internal Lodge Guidance notes */}
+                        <div className="space-y-2 pt-2">
+                          <span className="text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-wider block">
+                            INTERNAL DISCIPLINE & DIRECTIVE:
+                          </span>
+                          <p className="text-zinc-400 text-[11px] md:text-xs leading-relaxed font-sans font-semibold">
+                            {
+                              [
+                                "Every transaction, every contact, and every micro-habit compound toward absolute sovereignty. Do not neglect small coordinates.",
+                                "In the shadow of elite rings, credit, confidence and authority are the ultimate vehicles of seamless physical expansion.",
+                                "Silent maneuvers prevent energetic disruption. Let massive material results proclaim your status to the lower domains.",
+                                "Masonic circles were founded on this strict grid alignment. Guard your high-frequency corridor against lower vectors.",
+                                "The all-seeing eye sits detached at the top of the pyramid, capturing cosmic alignments with pure unemotional precision.",
+                                "Diversify investments into masonic highland county counties, gold reserves, and secure land bonds to protect your timeline lineage.",
+                                "The sovereign mind recognizes no physical or mental limitations, only kinetic opportunities to reinforce authority.",
+                                "The final covenant seal designating full energetic alignment with the 666 grand frequency matrix of carbon matter."
+                              ][activeLawIndex]
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom controls / page switcher */}
+                    <div className="border-t border-zinc-800 pt-5 mt-6 flex justify-between items-center">
+                      <button 
+                        type="button"
+                        disabled={activeLawIndex === 0}
+                        onClick={() => setActiveLawIndex(prev => prev !== null ? Math.max(0, prev - 1) : null)}
+                        className="px-3 py-2 bg-zinc-900 hover:bg-black text-gold-400 disabled:opacity-30 disabled:pointer-events-none border border-gold-500/20 font-mono text-[10px] font-black rounded uppercase tracking-wider cursor-pointer"
+                      >
+                        ◀ PREV LAW
+                      </button>
+
+                      <div className="text-[11px] font-mono text-zinc-500 font-bold">
+                        {activeLawIndex + 1} / 8 PRECIS
+                      </div>
+
+                      <button 
+                        type="button"
+                        disabled={activeLawIndex === 7}
+                        onClick={() => setActiveLawIndex(prev => prev !== null ? Math.min(7, prev + 1) : null)}
+                        className="px-3 py-2 bg-zinc-900 hover:bg-black text-gold-400 disabled:opacity-30 disabled:pointer-events-none border border-gold-500/20 font-mono text-[10px] font-black rounded uppercase tracking-wider cursor-pointer"
+                      >
+                        NEXT LAW ▶
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-zinc-350 leading-normal pt-2 font-bold font-sans">
-                    Historic examples of peak masonic sums include <strong className="text-gold-400">"COMPUTER" (666)</strong> and <strong className="text-gold-400">"NWO MATRIX"</strong> alignment multipliers. Check your full name or company now to trace hidden power codes.
-                  </p>
-                </div>
+                )}
+
               </div>
 
-              {/* Secret Gematria Telemetry / Explanation Screen */}
-              <div className="lg:col-span-12 xl:col-span-7 border-2 border-zinc-800 bg-[#0b0e14]/50 p-6 md:p-8 rounded-xl space-y-6 shadow-xl">
-                <h3 className="text-xl font-serif text-gold-400 uppercase tracking-wide font-extrabold">The Sovereign 666 Matrix Coordinates</h3>
-                
-                <div className="space-y-4 text-xs md:text-sm text-zinc-300 font-light leading-relaxed font-sans">
-                  <p>
-                    Throughout deep antiquity, global elites have structured institutions, treaties, and major infrastructural developments around primary mathematical ratios. The **666 code sequence** is not an omen of chaos, but rather the sovereign structural constant of physical carbon matter (6 protons, 6 neutrons, 6 electrons).
-                  </p>
+              {/* Secret Gematria Telemetry / Explanation Screen with custom 666 demonic artwork background */}
+              <div className="lg:col-span-12 xl:col-span-7 border-2 border-red-500/30 bg-black rounded-xl overflow-hidden flex flex-col justify-between shadow-[0_0_25px_rgba(239,68,68,0.2)] animate-fadeIn">
+                {/* 666 Artwork Viewport matching the second photo */}
+                <div className="relative w-full aspect-[4/3] md:aspect-[16/10] overflow-hidden bg-zinc-950 border-b border-red-500/20 group">
+                  <img 
+                    src={demonic666GlowImg} 
+                    alt="Active 666 Covenant Seal" 
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                  />
+                  {/* Glowing vignette overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                    <div className="bg-gradient-to-br from-[#0c0e15] to-[#121625] p-5 rounded-lg border border-gold-500/20 shadow-md">
-                      <span className="text-gold-400 font-mono text-xs font-extrabold uppercase tracking-widest block border-b border-gold-500/15 pb-1">The Solar Seal Code</span>
-                      <p className="text-zinc-300 text-[11px] mt-2 leading-relaxed font-semibold">
-                        Ancient secret circles partitioned solar motion charts into 36 planetary squares. Summing all integers from 1 through 36 yields exactly <strong className="text-gold-400 font-bold">666</strong>, the core of systemic solar energy alignment.
-                      </p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-[#0c0e15] to-[#121625] p-5 rounded-lg border border-gold-500/20 shadow-md">
-                      <span className="text-gold-400 font-mono text-xs font-extrabold uppercase tracking-widest block border-b border-gold-500/15 pb-1">The Latitude Anchor</span>
-                      <p className="text-zinc-300 text-[11px] mt-2 leading-relaxed font-semibold">
-                        Mapping the orbital trajectories from Washington to the East African Rift reveals a recurring <strong className="text-gold-400 font-bold">6.66°</strong> vector variation, used to designate temple county coordinates.
-                      </p>
-                    </div>
+                  {/* Status overlays */}
+                  <div className="absolute top-4 left-4 bg-red-950/90 border border-red-500/50 px-3 py-1.5 rounded-md backdrop-blur-sm shadow flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                    <span className="text-[10px] font-mono text-red-400 font-black tracking-widest uppercase">COVENANT ENFORCED: ACTIVE</span>
                   </div>
 
-                  <p className="text-zinc-200 font-semibold leading-relaxed">
-                    By maintaining financial centers, tax structures, and geopolitical treaties within the <strong className="text-gold-400">666 resonance octave</strong>, the Grand Council shapes the temporal world. Any organization, entity, or human name carrying this sum enters the orbit of sovereign destiny.
-                  </p>
+                  <div className="absolute bottom-4 right-4 bg-zinc-950/90 border border-gold-500/30 px-3 py-1.5 rounded-md backdrop-blur-sm shadow">
+                    <span className="text-[10px] font-mono text-gold-450 font-black tracking-widest uppercase">THE CHRONIC RESIDUE</span>
+                  </div>
                 </div>
 
-                <div className="bg-[#0b0e14]/90 p-4 rounded-lg border-2 border-gold-500/20">
-                  <div className="flex gap-3">
-                    <span className="p-2 py-1 rounded bg-gold-500/20 text-gold-400 font-mono text-xs self-start uppercase tracking-wider font-extrabold border border-gold-500/25">VI VI VI</span>
-                    <div className="space-y-1">
-                      <span className="text-xs font-mono text-gold-450 block uppercase font-extrabold">Active System Frequencies Sync</span>
-                      <p className="text-zinc-350 text-[11px] leading-relaxed font-bold font-sans">
-                        Every transaction routed through international central networks is checked against the <strong className="text-gold-400">666 checksum</strong>. This coordinates global assets flowing directly towards designated sovereign hubs.
+                {/* Secret intelligence details */}
+                <div className="p-6 md:p-8 space-y-4 bg-[#07090d]">
+                  <h3 className="text-xl font-serif text-red-500 uppercase tracking-wide font-extrabold flex items-center gap-2 drop-shadow-[0_0_5px_rgba(239,68,68,0.3)]">
+                    <span className="text-red-400">VI VI VI</span> - The Sovereign constant
+                  </h3>
+                  
+                  <p className="text-xs md:text-sm text-zinc-300 font-bold leading-relaxed font-sans">
+                    Throughout deep antiquity, global elites have structured institutions, treaties, and major infrastructural developments around primary mathematical ratios. The <strong className="text-red-400">666 code sequence</strong> is not an omen of chaos, but rather the sovereign structural constant of physical hidden power of enlightenment.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div className="bg-zinc-950/90 p-4 rounded-lg border border-red-500/20 shadow-md">
+                      <span className="text-red-400 font-mono text-[10px] font-extrabold uppercase tracking-widest block border-b border-red-500/10 pb-1">The Solar Seal Code</span>
+                      <p className="text-zinc-400 text-[11px] mt-2 leading-relaxed font-semibold">
+                        Ancient secret circles partitioned solar motion charts into 36 planetary squares. Summing all integers from 1 through 36 yields exactly <strong className="text-red-400 font-bold">666</strong>, the core of systemic solar alignment.
+                      </p>
+                    </div>
+
+                    <div className="bg-zinc-950/90 p-4 rounded-lg border border-red-500/20 shadow-md">
+                      <span className="text-red-400 font-mono text-[10px] font-extrabold uppercase tracking-widest block border-b border-red-500/10 pb-1">The Latitude Anchor</span>
+                      <p className="text-zinc-400 text-[11px] mt-2 leading-relaxed font-semibold">
+                        Mapping the orbital trajectories from Washington to the East African Rift reveals a recurring <strong className="text-red-400 font-bold">6.66°</strong> vector variation, used to designate temple county coordinates.
                       </p>
                     </div>
                   </div>
@@ -1740,30 +2287,10 @@ export default function App() {
 
                 <form onSubmit={handleIntakeSubmit} className="p-6 md:p-8 space-y-8">
                   
-                  {/* Part A: Google Verification Action (Auto-Cleared) */}
-                  <div className="space-y-3 bg-white p-5 rounded-lg border-2 border-gold-500/10 shadow-sm animate-fadeIn">
-                    <span className="text-xs font-mono text-gold-800 tracking-wider block uppercase font-extrabold flex items-center gap-1.5">
-                      <span className="text-[10px] bg-gold-500/10 text-gold-705 px-1.5 py-0.5 rounded font-mono border border-gold-500/20">A</span>
-                      Elite Identity Status
-                    </span>
-                    <p className="text-zinc-700 text-xs font-bold leading-normal">
-                      Baseline digital identity verified. Private profile alignment is fully configured. No manual name validation required.
-                    </p>
-                    
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-4 py-2.5 border border-emerald-200 rounded w-full">
-                        <CheckCircle className="w-5 h-5 flex-shrink-0 text-emerald-600 animate-pulse" />
-                        <div className="text-xs font-mono font-bold">
-                          Identity Safe Connection Status | Active Subject: <strong className="text-emerald-950 font-extrabold">{googleName}</strong> ({googleEmail})
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Part B: Blockchain Verification Action */}
+                  {/* Part A: Blockchain Verification Action */}
                   <div className="space-y-3 bg-white p-5 rounded-lg border-2 border-gold-500/10 shadow-sm">
                     <span className="text-xs font-mono text-gold-800 tracking-wider block uppercase font-extrabold flex items-center gap-1.5">
-                      <span className="text-[10px] bg-gold-500/10 text-gold-700 px-1.5 py-0.5 rounded font-mono border border-gold-500/20">B</span>
+                      <span className="text-[10px] bg-gold-500/10 text-gold-700 px-1.5 py-0.5 rounded font-mono border border-gold-500/20">A</span>
                       Sovereign Blockchain Node Proof-of-Stake
                     </span>
                     <p className="text-zinc-700 text-xs font-bold leading-normal">
@@ -1792,11 +2319,13 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                                 {/* Part C: Intake Forms and details */}
+                  </div>
+
+                  {/* Part B: Personal Registration Registry (Geographic Codes) */}
                   <div className="space-y-4 border-t border-gold-500/15 pt-6">
-                    <span className="text-sm font-mono text-gold-800 block uppercase font-black tracking-wider flex items-center gap-2">
+                    <span className="text-sm font-mono text-gold-805 block uppercase font-black tracking-wider flex items-center gap-2">
                       <FileText className="w-4 h-4 text-gold-650" />
-                      C. Personal Registration Registry (Geographic Codes)
+                      B. Personal Registration Registry (Geographic Codes)
                     </span>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1882,14 +2411,26 @@ export default function App() {
                         />
                       </div>
 
+                      {/* Save progress draft override */}
+                      <div className="md:col-span-2 pt-3">
+                        <button
+                          type="button"
+                          onClick={handleSaveAllDetails}
+                          className="w-full py-3 px-5 bg-zinc-900 hover:bg-black text-gold-400 font-mono text-xs rounded-lg font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 border-2 border-gold-500/30 cursor-pointer shadow-md hover:scale-[1.01]"
+                        >
+                          <Save className="w-4.5 h-4.5 text-gold-500 animate-pulse" />
+                          SAVE REGISTRY PROGRESS PROGRESSION
+                        </button>
+                      </div>
+
                     </div>
                   </div>
 
-                  {/* Part D: Objective selection */}
+                  {/* Part C: Objective selection */}
                   <div className="space-y-4 border-t border-gold-500/15 pt-6">
                     <span className="text-sm font-mono text-gold-800 block uppercase font-extrabold tracking-wider flex items-center gap-2">
                       <Target className="w-4.5 h-4.5 text-gold-600" />
-                      D. Supreme Initiatic Purpose Selection
+                      C. Supreme Initiatic Purpose Selection
                     </span>
                     <p className="text-zinc-700 text-xs font-bold leading-normal">
                       Select your primary spiritual motivation vector. The sovereign ritual alignments vary depending on this selected matrix focus.
@@ -1954,6 +2495,578 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Part D: Biometric Face Capture & Physical ID Card Uploads */}
+                  <div className="space-y-5 border-t border-gold-500/15 pt-6 animate-fadeIn">
+                    <span className="text-sm font-mono text-gold-805 block uppercase font-black tracking-wider flex items-center gap-2">
+                      <Camera className="w-4.5 h-4.5 text-gold-600 animate-pulse" />
+                      D. Biometric Video Capture & Physical ID Scan Credentials
+                    </span>
+                    <p className="text-zinc-700 text-xs font-bold leading-normal">
+                      High-tier initiate files require valid dual-factor visual confirmation. Please secure a live full-face biometric camera snapshot and provide high-contrast front and back scans of your government-issued identity card. You may upload static images or scan your ID cards live using your device's camera.
+                    </p>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      
+                      {/* Left Block: Biometric Webcam Module */}
+                      <div className="lg:col-span-6 bg-white border-2 border-gold-500/15 rounded-xl p-5 shadow-inner flex flex-col justify-between min-h-[420px]">
+                        <div>
+                          <div className="flex items-center justify-between border-b border-gold-500/10 pb-3 mb-4">
+                            <span className="text-xs font-mono text-zinc-900 font-extrabold uppercase tracking-wide flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                              Biometric Camera Lock (Auto-locking active)
+                            </span>
+                            <span className="text-[9px] font-mono text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 font-bold uppercase">
+                              60s LENS TIMEOUT SECURED
+                            </span>
+                          </div>
+
+                          {/* 60s Count down alarm notifier */}
+                          {activeCamRole === "selfie" && (
+                            <div className="mb-2 bg-rose-50 border border-rose-200 p-2.5 rounded-lg flex items-center justify-between font-mono text-[10px] uppercase font-black tracking-wider text-rose-800 animate-pulse">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+                                AUTO-LOCK ACTIVE SENSOR COUNTDOWN
+                              </span>
+                              <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-black text-xs font-sans">{camTimer}s</span>
+                            </div>
+                          )}
+
+                          {/* Lens Selector: Selfie Style vs Back Side of Camera */}
+                          {activeCamRole === "selfie" && !selfieImg && (
+                            <div className="mb-3.5 flex items-center justify-between gap-1.5 p-1.5 bg-zinc-50 border border-zinc-200 rounded-lg animate-fadeIn shadow-sm">
+                              <span className="text-[10px] font-mono text-zinc-500 font-extrabold uppercase pl-1 flex items-center gap-1">
+                                <Sliders className="w-3.5 h-3.5 text-zinc-400" />
+                                Camera Lens:
+                              </span>
+                              <div className="flex gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setCameraFacingMode("user")}
+                                  className={`px-3 py-1 text-[10px] font-mono uppercase rounded font-black transition-all cursor-pointer ${
+                                    cameraFacingMode === "user"
+                                      ? "bg-gold-500 text-black shadow-md ring-1 ring-gold-600/30"
+                                      : "text-zinc-650 hover:bg-zinc-100"
+                                  }`}
+                                >
+                                  🤳 Selfie Style
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCameraFacingMode("environment")}
+                                  className={`px-3 py-1 text-[10px] font-mono uppercase rounded font-black transition-all cursor-pointer ${
+                                    cameraFacingMode === "environment"
+                                      ? "bg-gold-500 text-black shadow-md ring-1 ring-gold-600/30"
+                                      : "text-zinc-655 hover:bg-zinc-100"
+                                  }`}
+                                >
+                                  📸 Back Side
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Live Video / Captured Still frame layout */}
+                          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-zinc-950 flex flex-col items-center justify-center border border-zinc-900 shadow-inner group p-0">
+                            
+                            {/* Real-time frame scanner metrics HUD */}
+                            {activeCamRole === "selfie" && (
+                              <div className="absolute top-3 right-3 bg-zinc-950/90 border border-gold-500/30 text-gold-400 font-mono text-[8px] md:text-[9px] p-2.5 rounded-md flex flex-col gap-1.5 shadow-2xl z-20 min-w-[170px] leading-tight animate-fadeIn">
+                                <div className="border-b border-gold-500/20 pb-1 mb-1 font-bold text-center text-gold-500 tracking-wider">
+                                  BIO-DETECTION FEED
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>FACE CLARITY:</span>
+                                  <span className={scanMetrics.clarity >= 80 ? "text-emerald-400 font-black" : "text-amber-500 font-black"}>
+                                    {scanMetrics.clarity}% {scanMetrics.clarity >= 80 ? "PASS" : "LOW"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>AMBIENT LUX:</span>
+                                  <span className={scanMetrics.lighting === "BALANCED" ? "text-emerald-400 font-black" : "text-rose-500 font-black"}>
+                                    {scanMetrics.lighting}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>FACE ALIGNED:</span>
+                                  <span className="text-emerald-400 font-black">LOCKED</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {selfieImg ? (
+                              <div className="w-full h-full relative">
+                                <img 
+                                  src={selfieImg} 
+                                  alt="Captured Sovereign Selfie" 
+                                  className="w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-gold-900/10 mix-blend-color-burn"></div>
+                                <div className="absolute inset-0 border-2 border-dashed border-gold-500/30"></div>
+                              </div>
+                            ) : activeCamRole === "selfie" ? (
+                              <div className="w-full h-full relative bg-black">
+                                <video 
+                                  ref={videoRef} 
+                                  className={`w-full h-full object-cover ${cameraFacingMode === "user" ? "scale-x-[-1]" : ""}`}
+                                  playsInline 
+                                  muted 
+                                />
+                                {/* Tech overlay scanner line and dashed border guides */}
+                                <div className="absolute inset-4 pointer-events-none z-10 border-2 border-dashed border-gold-500/30"></div>
+                                <div className="absolute inset-x-0 top-1/2 h-0.5 bg-gold-500/40 animate-pulse pointer-events-none"></div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 text-[8px] font-mono text-gold-450 font-black tracking-widest text-center uppercase drop-shadow bg-black/50 px-3 py-1.5 rounded-md border border-gold-500/20">
+                                  ALIGN FACE IN THE SCREEN
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center p-6 text-center space-y-2">
+                                <div className="w-12 h-12 rounded-full border border-zinc-800 bg-zinc-900 flex items-center justify-center text-zinc-500">
+                                  <Camera className="w-5 h-5 text-gold-500" />
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-mono text-zinc-400 block font-bold uppercase">SECURE LENS STREAM DISCONNECTED</span>
+                                  <span className="text-[9px] text-zinc-650 leading-normal block max-w-[200px]">
+                                    Unleash the biometric face scanner map below to calibrate your entry credentials.
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Bio-compliance verification state feedback text */}
+                            {!selfieImg && activeCamRole === "selfie" && (
+                              <div className="absolute bottom-3 left-3 bg-[#0c101a] border border-gold-500/30 text-gold-400 font-mono text-[8px] px-2.5 py-1.5 rounded flex items-center gap-1.5 font-bold animate-pulse max-w-[70%]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 block animate-ping"></span>
+                                <span>{scanMetrics.alignment}</span>
+                              </div>
+                            )}
+
+                            {/* Lens status scanner block */}
+                            {!selfieImg && activeCamRole === "selfie" && (
+                              <div className="absolute bottom-3 right-3 bg-red-600 text-white font-mono text-[8px] px-2 py-0.5 rounded flex items-center gap-1 font-bold animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white block"></span>
+                                RECORDING BIO-SIGNATURE
+                              </div>
+                            )}
+                            
+                            {selfieImg && (
+                              <div className="absolute bottom-3 left-3 bg-emerald-600 text-white font-mono text-[8px] px-2 py-0.5 rounded font-black uppercase">
+                                VERIFIED BIOMETRIC MAP SECURED
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Confidence level calibration bar */}
+                          {activeCamRole === "selfie" && !selfieImg && (
+                            <div className="mt-3.5 space-y-1.5 animate-fadeIn">
+                              <div className="flex justify-between items-center text-[9px] font-mono text-zinc-600 font-black uppercase">
+                                <span>BIOMETRIC SCAN ALIGNMENT CONFIDENCE INDEX</span>
+                                <span className="text-gold-700 font-black">{scanConfidence}%</span>
+                              </div>
+                              <div className="w-full bg-zinc-200 h-2.5 rounded-full overflow-hidden border border-zinc-300 relative">
+                                <div 
+                                  className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-300" 
+                                  style={{ width: `${scanConfidence}%` }}
+                                ></div>
+                              </div>
+                              <p className="text-[8px] font-mono text-[#71717a] font-bold uppercase leading-normal">
+                                🔒 KEEP STILL. SCANNER WILL VERIFY BIO-COMPLIANCE. SNAP MANUALLY WHEN READY.
+                              </p>
+                            </div>
+                          )}
+
+                          {cameraError && activeCamRole === "selfie" && (
+                            <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-900 rounded p-2.5 text-[10px] font-mono font-bold leading-relaxed">
+                              ⚠️ {cameraError}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Interactive Trigger block */}
+                        <div className="mt-4 pt-3.5 border-t border-zinc-100 space-y-3">
+                          {selfieImg ? (
+                            <div className="space-y-2.5">
+                              {/* Primary Save Button under captured photo */}
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  handleSaveAllDetails();
+                                  setSaveStatus("SAVED");
+                                  setTimeout(() => setSaveStatus(null), 3000);
+                                }}
+                                className="w-full py-3 px-5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-mono text-xs rounded-lg font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-lg cursor-pointer hover:scale-101 border-2 border-emerald-500/20"
+                              >
+                                <Save className="w-4 h-4 text-white" />
+                                {saveStatus === "SAVED" ? "💾 BIOMETRIC PHOTO SAVED SECURELY!" : "💾 SAVE BIOMETRIC PHOTO"}
+                              </button>
+
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  setSelfieImg(null);
+                                  setActiveCamRole("selfie");
+                                }}
+                                className="w-full py-2 px-4 bg-zinc-900 hover:bg-black text-gold-450 font-mono text-xs rounded-lg font-black tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow border border-gold-500/25 animate-fadeIn"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                RESET & RETAKE BIOMETRIC PIC
+                              </button>
+                            </div>
+                          ) : activeCamRole === "selfie" ? (
+                            <div className="space-y-2">
+                              <button 
+                                type="button"
+                                onClick={handleSnapSelfie}
+                                className="w-full py-3 px-5 bg-gold-500 hover:bg-gold-650 text-black font-mono text-xs rounded-lg font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:scale-101 cursor-pointer animate-fadeIn"
+                              >
+                                <Camera className="w-4 h-4 animate-bounce" />
+                                SNAP SECURE BIOMETRIC SELFIE
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={stopCameraStream}
+                                className="w-full py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-650 border border-zinc-200 font-mono text-[10px] rounded-lg font-bold uppercase transition-colors cursor-pointer"
+                              >
+                                Dismiss Camera Stream
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <button 
+                                type="button"
+                                onClick={() => setActiveCamRole("selfie")}
+                                className="w-full py-3 px-5 bg-zinc-900 border-2 border-gold-500/30 hover:border-gold-500/90 hover:bg-gold-500/5 text-gold-400 font-mono text-xs rounded-lg font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-md cursor-pointer hover:scale-[1.005]"
+                              >
+                                <Camera className="w-4.5 h-4.5 text-gold-500" />
+                                ACTIVATE BIOMETRIC FACE CAMERA
+                              </button>
+                              
+                              <div className="flex items-center justify-center gap-2 py-1">
+                                <div className="h-px bg-zinc-100 flex-1"></div>
+                                <span className="text-[9px] font-mono text-zinc-400 uppercase font-black">OR PROCEED VIA FILE IMPORT</span>
+                                <div className="h-px bg-zinc-100 flex-1"></div>
+                              </div>
+
+                              <div className="text-center">
+                                <label className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded border-2 border-dashed border-zinc-350 hover:border-gold-500 bg-zinc-50 hover:bg-gold-500/5 transition-all text-xs font-mono text-zinc-700 hover:text-gold-750 font-black uppercase cursor-pointer w-full justify-center shadow-sm select-none">
+                                  <Upload className="w-3.5 h-3.5" />
+                                  Browse Computer Selfie File...
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => handleFileChange(e, "selfie")} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                       {/* Right Block: Dual Government ID scan drop zones with auto-locking and sensor alignment */}
+                      <div className="lg:col-span-6 space-y-5">
+                        
+                        {/* Front ID upload & Scan live zone */}
+                        <div className="bg-white border-2 border-gold-500/15 rounded-xl p-5 shadow-inner flex flex-col justify-between min-h-[180px]">
+                          <div className="flex items-center justify-between border-b border-gold-500/10 pb-2 mb-3">
+                            <span className="text-xs font-mono text-zinc-900 font-extrabold uppercase tracking-wide flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                              FRONT SIDE DOCUMENT CARD
+                            </span>
+                            {idFrontImg ? (
+                              <span className="text-[8px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded font-black uppercase">
+                                FRONT STAMP: ACTIVE 666
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-mono text-zinc-400 uppercase">Awaiting scans</span>
+                            )}
+                          </div>
+
+                          {/* 60s Count down alarm notifier (Front ID) */}
+                          {activeCamRole === "front" && (
+                            <div className="mb-3 bg-rose-50 border border-rose-200 p-2 rounded flex items-center justify-between font-mono text-[9px] uppercase font-black text-rose-800 animate-pulse">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
+                                DOCUMENT SNAP TIMEOUT COUNTER
+                              </span>
+                              <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-black text-xs">{camTimer}s</span>
+                            </div>
+                          )}
+
+                          {activeCamRole === "front" ? (
+                            <div className="space-y-3">
+                              <div className="relative w-full aspect-[1.586/1] rounded-lg overflow-hidden bg-zinc-950 border-2 border-gold-500 flex items-center justify-center shadow-inner animate-fadeIn">
+                                <video 
+                                  ref={videoRef} 
+                                  className="w-full h-full object-cover" 
+                                  playsInline 
+                                  muted 
+                                />
+                                <div className="absolute inset-3 border-2 border-dashed border-gold-500/40 rounded pointer-events-none"></div>
+                                <div className="absolute top-2 left-2 bg-red-650 text-white font-mono text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
+                                  LIVE SCAN PROPORTIONS DETECTED
+                                </div>
+
+                                {/* Active live sensor metrics overlay */}
+                                <div className="absolute top-2 right-2 bg-zinc-950/90 border border-gold-500/30 text-gold-400 font-mono text-[8px] p-2 rounded flex flex-col gap-1 shadow-2xl z-20 md:min-w-[130px] leading-tight select-none">
+                                  <div className="flex items-center justify-between gap-2 border-b border-gold-500/10 pb-0.5 text-gold-500 font-bold uppercase">
+                                    <span>ID ANALYZER</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>SHARPNESS:</span>
+                                    <span className="text-emerald-400 font-black">{scanMetrics.clarity}%</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span>LUX:</span>
+                                    <span className="text-emerald-400 font-black">{scanMetrics.lighting}</span>
+                                  </div>
+                                </div>
+
+                                {/* Alignment instruction overlay banner */}
+                                <div className="absolute bottom-2 left-2 right-2 bg-black/80 border border-zinc-850 px-2.5 py-1 rounded text-center font-mono text-[8px] text-zinc-300 font-black tracking-wider uppercase">
+                                  {scanMetrics.alignment}
+                                </div>
+                              </div>
+
+                              {/* Confidence level calibrator front bar */}
+                              <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded-lg p-2.5">
+                                <div className="flex justify-between items-center text-[8px] font-mono text-zinc-600 font-black uppercase">
+                                  <span>CARD VERIFICATION CONFIDENCE RANGE</span>
+                                  <span className="text-gold-700 font-black">{scanConfidence}%</span>
+                                </div>
+                                <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden border border-zinc-350 relative">
+                                  <div 
+                                    className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-300" 
+                                    style={{ width: `${scanConfidence}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={() => handleSnapIDCard("front")}
+                                  className="flex-1 py-2 bg-gold-400 hover:bg-gold-500 text-black font-mono text-[10px] font-black rounded uppercase transition-colors"
+                                >
+                                  SNAP FRONT SIDE ID DOCUMENT
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={stopCameraStream}
+                                  className="py-2 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-650 font-mono text-[10px] rounded uppercase"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : idFrontImg ? (
+                            <div className="relative w-full aspect-[1.586/1] rounded-lg overflow-hidden border border-zinc-150 bg-zinc-50 shadow group animate-fadeIn">
+                              <img 
+                                src={idFrontImg} 
+                                alt="ID Card Front Capture" 
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
+                                <button 
+                                  type="button"
+                                  onClick={() => setActiveCamRole("front")}
+                                  className="bg-zinc-900 border border-gold-500/35 text-gold-400 hover:bg-black text-[10px] font-mono font-black uppercase py-2 px-3 rounded shadow"
+                                >
+                                  Scan Live Cam Again
+                                </button>
+                                <label className="bg-white text-zinc-900 border border-zinc-250 hover:bg-zinc-50 text-[10px] font-mono font-black uppercase py-2 px-3 rounded cursor-pointer shadow">
+                                  Select File
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => handleFileChange(e, "front")} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3 py-1">
+                              <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                  type="button"
+                                  onClick={() => setActiveCamRole("front")}
+                                  className="py-4 bg-zinc-50 hover:bg-gold-500/5 hover:border-gold-500/40 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center transition-colors text-center cursor-pointer select-none"
+                                >
+                                  <Camera className="w-5 h-5 text-gold-500 mb-1" />
+                                  <span className="text-[10px] font-mono font-black text-zinc-900 uppercase">SCAN ID LIVE</span>
+                                  <span className="text-[8px] text-zinc-500 mt-0.5">Device Camera ID Capture</span>
+                                </button>
+                                
+                                <label className="py-4 bg-zinc-50 hover:bg-gold-500/5 hover:border-gold-500/40 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center transition-colors text-center cursor-pointer select-none">
+                                  <Upload className="w-5 h-5 text-gold-500 mb-1" />
+                                  <span className="text-[10px] font-mono font-black text-zinc-900 uppercase">UPLOAD FILE</span>
+                                  <span className="text-[8px] text-zinc-500 mt-0.5">Browse PC ID file...</span>
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => handleFileChange(e, "front")} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Back ID upload & Scan live zone */}
+                        <div className="bg-white border-2 border-gold-500/15 rounded-xl p-5 shadow-inner flex flex-col justify-between min-h-[180px]">
+                          <div className="flex items-center justify-between border-b border-gold-500/10 pb-2 mb-3">
+                            <span className="text-xs font-mono text-zinc-900 font-extrabold uppercase tracking-wide flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                              BACK SIDE DOCUMENT CARD
+                            </span>
+                            {idBackImg ? (
+                              <span className="text-[8px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded font-black uppercase">
+                                BACK STAMP: ACTIVE 666
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-mono text-zinc-400 uppercase">Awaiting scans</span>
+                            )}
+                          </div>
+
+                          {/* 60s Count down alarm notifier (Back ID) */}
+                          {activeCamRole === "back" && (
+                            <div className="mb-3 bg-rose-50 border border-rose-200 p-2 rounded flex items-center justify-between font-mono text-[9px] uppercase font-black text-rose-800 animate-pulse">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
+                                DOCUMENT SNAP TIMEOUT COUNTER
+                              </span>
+                              <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-black text-xs">{camTimer}s</span>
+                            </div>
+                          )}
+
+                          {activeCamRole === "back" ? (
+                            <div className="space-y-3">
+                              <div className="relative w-full aspect-[1.586/1] rounded-lg overflow-hidden bg-zinc-950 border-2 border-gold-500 flex items-center justify-center shadow-inner animate-fadeIn">
+                                <video 
+                                  ref={videoRef} 
+                                  className="w-full h-full object-cover" 
+                                  playsInline 
+                                  muted 
+                                />
+                                <div className="absolute inset-3 border-2 border-dashed border-gold-500/40 rounded pointer-events-none"></div>
+                                <div className="absolute top-2 left-2 bg-red-650 text-white font-mono text-[8px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">
+                                  LIVE SCAN PROPORTIONS DETECTED
+                                </div>
+
+                                {/* Active live sensor metrics overlay */}
+                                <div className="absolute top-2 right-2 bg-zinc-950/90 border border-gold-500/30 text-gold-400 font-mono text-[8px] p-2 rounded flex flex-col gap-1 shadow-2xl z-20 md:min-w-[130px] leading-tight select-none">
+                                  <div className="flex items-center justify-between gap-2 border-b border-gold-500/10 pb-0.5 text-gold-500 font-bold uppercase">
+                                    <span>ID ANALYZER</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>SHARPNESS:</span>
+                                    <span className="text-emerald-400 font-black">{scanMetrics.clarity}%</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span>LUX:</span>
+                                    <span className="text-emerald-400 font-black">{scanMetrics.lighting}</span>
+                                  </div>
+                                </div>
+
+                                {/* Alignment instruction overlay banner */}
+                                <div className="absolute bottom-2 left-2 right-2 bg-black/80 border border-zinc-850 px-2.5 py-1 rounded text-center font-mono text-[8px] text-zinc-300 font-black tracking-wider uppercase">
+                                  {scanMetrics.alignment}
+                                </div>
+                              </div>
+
+                              {/* Confidence level calibrator back bar */}
+                              <div className="space-y-1 bg-zinc-50 border border-zinc-150 rounded-lg p-2.5">
+                                <div className="flex justify-between items-center text-[8px] font-mono text-zinc-600 font-black uppercase">
+                                  <span>CARD VERIFICATION CONFIDENCE RANGE</span>
+                                  <span className="text-gold-700 font-black">{scanConfidence}%</span>
+                                </div>
+                                <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden border border-zinc-350 relative">
+                                  <div 
+                                    className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-300" 
+                                    style={{ width: `${scanConfidence}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={() => handleSnapIDCard("back")}
+                                  className="flex-1 py-2 bg-gold-400 hover:bg-gold-500 text-black font-mono text-[10px] font-black rounded uppercase transition-colors"
+                                >
+                                  SNAP BACK SIDE ID DOCUMENT
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={stopCameraStream}
+                                  className="py-2 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-650 font-mono text-[10px] rounded uppercase"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : idBackImg ? (
+                            <div className="relative w-full aspect-[1.586/1] rounded-lg overflow-hidden border border-zinc-150 bg-zinc-50 shadow group animate-fadeIn">
+                              <img 
+                                src={idBackImg} 
+                                alt="ID Card Back Capture" 
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
+                                <button 
+                                  type="button"
+                                  onClick={() => setActiveCamRole("back")}
+                                  className="bg-zinc-900 border border-gold-500/35 text-gold-400 hover:bg-black text-[10px] font-mono font-black uppercase py-2 px-3 rounded shadow"
+                                >
+                                  Scan Live Cam Again
+                                </button>
+                                <label className="bg-white text-zinc-900 border border-zinc-250 hover:bg-zinc-50 text-[10px] font-mono font-black uppercase py-2 px-3 rounded cursor-pointer shadow">
+                                  Select File
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => handleFileChange(e, "back")} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3 py-1">
+                              <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                  type="button"
+                                  onClick={() => setActiveCamRole("back")}
+                                  className="py-4 bg-zinc-50 hover:bg-gold-500/5 hover:border-gold-500/40 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center transition-colors text-center cursor-pointer select-none"
+                                >
+                                  <Camera className="w-5 h-5 text-gold-500 mb-1" />
+                                  <span className="text-[10px] font-mono font-black text-zinc-900 uppercase">SCAN ID LIVE</span>
+                                  <span className="text-[8px] text-zinc-500 mt-0.5">Device Camera ID Capture</span>
+                                </button>
+                                
+                                <label className="py-4 bg-zinc-50 hover:bg-gold-500/5 hover:border-gold-500/40 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center transition-colors text-center cursor-pointer select-none">
+                                  <Upload className="w-5 h-5 text-gold-500 mb-1" />
+                                  <span className="text-[10px] font-mono font-black text-zinc-900 uppercase">UPLOAD FILE</span>
+                                  <span className="text-[8px] text-zinc-500 mt-0.5">Browse PC ID file...</span>
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => handleFileChange(e, "back")} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>                       </div>
+
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Submission triggers */}
                   <div className="border-t border-gold-500/15 pt-6 mt-6 animate-pulse-subtle">
                     <button 
@@ -1964,7 +3077,7 @@ export default function App() {
                       <ChevronRight className="w-5 h-5" />
                     </button>
                     <span className="text-[10px] font-mono text-gold-500 mt-3 block text-center uppercase tracking-widest font-extrabold">ALL ARCHIVE SUBMISSIONS ARE SUBJECT TO COMPREHENSIVE SURVEILLANCE VIBRATIONAL CHECKS.</span>
-                  </div>     </div>
+                  </div>
 
                 </form>
               </div>
@@ -2024,6 +3137,82 @@ export default function App() {
                       <span className="text-[10px] font-mono text-gold-400 uppercase tracking-widest mt-3 font-black">Lodge Symbol Template</span>
                     </div>
 
+                  </div>
+                </div>
+
+                {/* Secured Identity Dossier summary card */}
+                <div className="bg-[#0b0e14]/95 border-2 border-gold-500/30 p-6 md:p-8 rounded-xl space-y-4 shadow-2xl animate-fadeIn">
+                  <div className="flex items-center gap-2 border-b border-zinc-805 pb-3">
+                    <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                    <div>
+                      <h4 className="text-sm font-mono text-white uppercase font-black tracking-wider">SECURED IDENTITY DOSSIER SIGNED IN RED</h4>
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase">Subject Verified & Cleared via decentralized credential trace</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                    {/* Live Biometric Selfie */}
+                    <div className="space-y-3 text-center bg-black/60 p-4 rounded-lg border border-gold-500/10 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono text-gold-400 block uppercase font-extrabold tracking-wider border-b border-zinc-900 pb-1.5 mb-3">Biometric Selfie Locked</span>
+                        {selfieImg ? (
+                          <div className="relative aspect-square w-full max-w-[130px] mx-auto rounded-lg overflow-hidden border-2 border-emerald-500/35 shadow-md">
+                            <img src={selfieImg} alt="Biometric Face Grid" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1 left-1.5 bg-emerald-600 text-[8px] font-mono text-white font-black px-1.5 py-0.5 rounded shadow">ACTIVE</div>
+                          </div>
+                        ) : (
+                          <div className="aspect-square w-full max-w-[130px] mx-auto bg-zinc-900 rounded-lg flex items-center justify-center text-zinc-500 border border-dashed border-zinc-800">
+                            <span className="text-[10px] font-mono font-bold">No selfie captured</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-mono text-zinc-200 block font-black uppercase mt-2">{regData.fullName}</span>
+                        <span className="text-[9px] font-mono text-zinc-450 block italic leading-none uppercase font-bold mt-1">CODE: IL-666-BIOM</span>
+                      </div>
+                    </div>
+
+                    {/* ID Front image visual */}
+                    <div className="space-y-3 text-center bg-black/60 p-4 rounded-lg border border-gold-500/10 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono text-gold-400 block uppercase font-extrabold tracking-wider border-b border-zinc-900 pb-1.5 mb-3">ID Front Scan</span>
+                        {idFrontImg ? (
+                          <div className="relative aspect-[1.586/1] w-full max-w-[200px] mx-auto rounded-lg overflow-hidden border-2 border-emerald-500/35 shadow-md bg-zinc-950">
+                            <img src={idFrontImg} alt="ID Front Scan Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1 left-1.5 bg-emerald-600 text-[8px] font-mono text-white font-black px-1.5 py-0.5 rounded shadow">SECURED</div>
+                          </div>
+                        ) : (
+                          <div className="aspect-[1.586/1] w-full max-w-[180px] mx-auto bg-zinc-900 rounded-lg flex items-center justify-center text-zinc-500 border border-dashed border-zinc-800">
+                            <span className="text-[10px] font-mono font-bold">No front clip uploaded</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono text-zinc-300 block font-black uppercase mt-1">Country alignment</span>
+                        <span className="text-[9px] font-mono text-zinc-450 block uppercase font-bold text-center mt-1">{regData.country}</span>
+                      </div>
+                    </div>
+
+                    {/* ID Back image visual */}
+                    <div className="space-y-3 text-center bg-black/60 p-4 rounded-lg border border-gold-500/10 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono text-gold-400 block uppercase font-extrabold tracking-wider border-b border-zinc-900 pb-1.5 mb-3">ID Back Scan</span>
+                        {idBackImg ? (
+                          <div className="relative aspect-[1.586/1] w-full max-w-[200px] mx-auto rounded-lg overflow-hidden border-2 border-emerald-500/35 shadow-md bg-zinc-950">
+                            <img src={idBackImg} alt="ID Back Scan Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="absolute top-1 left-1.5 bg-emerald-600 text-[8px] font-mono text-white font-black px-1.5 py-0.5 rounded shadow">SECURED</div>
+                          </div>
+                        ) : (
+                          <div className="aspect-[1.586/1] w-full max-w-[180px] mx-auto bg-zinc-900 rounded-lg flex items-center justify-center text-zinc-500 border border-dashed border-zinc-800">
+                            <span className="text-[10px] font-mono font-bold">No back clip uploaded</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono text-zinc-300 block font-black uppercase mt-1">Masonic sub-lodge</span>
+                        <span className="text-[9px] font-mono text-zinc-450 block uppercase font-bold text-center mt-1">{regData.county} grid</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
